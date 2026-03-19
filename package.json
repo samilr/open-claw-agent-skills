@@ -1,0 +1,27 @@
+{
+  "name": "dev-team",
+  "version": "1.0.0",
+  "description": "AI software development team skill for OpenClaw — 6 specialized agents powered by Claude Opus 4.6",
+  "type": "module",
+  "main": "devteam.js",
+  "scripts": {
+    "start": "node devteam.js"
+  },
+  "keywords": [
+    "openclaw",
+    "ai-agents",
+    "software-development",
+    "claude",
+    "anthropic",
+    "dev-team",
+    "orchestration"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
