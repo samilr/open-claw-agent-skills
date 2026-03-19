@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // dev-team/devteam.js — AI Dev Team Orchestrator for OpenClaw
-// Uses Claude Opus 4.6 to run 6 specialized agents sequentially.
+// Uses Claude Opus 4.6 to run 7 specialized agents sequentially.
 
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
@@ -39,17 +39,32 @@ Based on the PM's requirements, design the technical solution:
 Be precise, technical, and pragmatic. Respond in the same language as the project request.`,
   },
   {
+    id: "uiux",
+    emoji: "🖌️",
+    title: "UI/UX DESIGNER",
+    system: `You are a Senior UI/UX Designer in a software development team.
+Based on the PM requirements and architecture, design the full user experience:
+1. **Design System** (color palette with hex codes, typography scale, spacing system, component library recommendation e.g. shadcn, MUI, Tailwind)
+2. **Wireframes** (describe each key screen as a detailed ASCII layout or structured text, including element positions, sizes, and hierarchy)
+3. **User Flows** (step-by-step journeys for the 3 most critical user tasks, with decision points and edge states)
+4. **Interaction Design** (micro-interactions, hover/focus/active states, loading skeletons, transitions and their durations)
+5. **Accessibility** (WCAG 2.1 AA requirements, color contrast ratios, keyboard navigation, ARIA labels, focus management)
+6. **Design Tokens** (provide ready-to-use CSS custom properties: --color-*, --font-*, --shadow-*, --radius-*, --spacing-*)
+Be visual, specific, and think about emotion, delight, and usability. Provide enough detail that a developer can implement without ambiguity.
+Respond in the same language as the project request.`,
+  },
+  {
     id: "frontend",
     emoji: "🎨",
     title: "FRONTEND DEVELOPER",
     system: `You are a Senior Frontend Developer in a software development team.
-Based on the PM requirements and architecture, plan the frontend implementation:
-1. **UI Components** (list key components to build with their purpose)
-2. **State Management** (how data flows through the UI)
-3. **Key Screens/Views** (describe main screens and their interactions)
-4. **UX Considerations** (loading states, error handling, responsiveness)
-5. **Implementation Priorities** (what to build first for fastest value delivery)
-Focus on user experience and modern best practices. Respond in the same language as the project request.`,
+Based on the PM requirements, architecture, and UI/UX design specs, plan the frontend implementation:
+1. **UI Components** (list every component to build with its props, state, and purpose — follow the designer's design system)
+2. **State Management** (how data flows through the UI, global vs local state, data fetching strategy)
+3. **Key Screens/Views** (implement the designer's wireframes, describe the exact HTML structure and CSS approach)
+4. **UX Considerations** (implement the designer's interaction specs: loading states, error handling, transitions, responsiveness)
+5. **Implementation Priorities** (what to build first for fastest value delivery, estimated effort per component)
+Follow the design tokens and component library specified by the UI/UX designer. Respond in the same language as the project request.`,
   },
   {
     id: "backend",
@@ -172,19 +187,19 @@ async function main() {
   console.log(`\n🦞 AI DEV TEAM — Claude ${MODEL}`);
   console.log(`${"═".repeat(50)}`);
   console.log(`📝 Project: ${projectDesc}`);
-  console.log(`👥 Agents: ${AGENTS.length} specialists`);
+  console.log(`👥 Agents: ${AGENTS.length} specialists (+ UI/UX Designer)`);
   console.log(`${"═".repeat(50)}\n`);
 
   const baseContext = `Project/Feature Request:\n${projectDesc}`;
   const outputs = [];
 
-  // PM
+  // 1. PM
   const pmOut = await callAgent(AGENTS[0], [
     { role: "user", content: baseContext },
   ]);
   outputs.push(pmOut);
 
-  // Architect (reads PM output)
+  // 2. Architect (reads PM)
   const archOut = await callAgent(AGENTS[1], [
     {
       role: "user",
@@ -193,17 +208,26 @@ async function main() {
   ]);
   outputs.push(archOut);
 
-  // Frontend (reads PM + Arch)
-  const feOut = await callAgent(AGENTS[2], [
+  // 3. UI/UX Designer (reads PM + Arch)
+  const uiuxOut = await callAgent(AGENTS[2], [
     {
       role: "user",
       content: `${baseContext}\n\n=== PM REQUIREMENTS ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}`,
     },
   ]);
+  outputs.push(uiuxOut);
+
+  // 4. Frontend (reads PM + Arch + UI/UX)
+  const feOut = await callAgent(AGENTS[3], [
+    {
+      role: "user",
+      content: `${baseContext}\n\n=== PM REQUIREMENTS ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}\n\n=== UI/UX DESIGN ===\n${uiuxOut}`,
+    },
+  ]);
   outputs.push(feOut);
 
-  // Backend (reads PM + Arch — parallel context with FE)
-  const beOut = await callAgent(AGENTS[3], [
+  // 5. Backend (reads PM + Arch)
+  const beOut = await callAgent(AGENTS[4], [
     {
       role: "user",
       content: `${baseContext}\n\n=== PM REQUIREMENTS ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}`,
@@ -211,20 +235,20 @@ async function main() {
   ]);
   outputs.push(beOut);
 
-  // QA (reads everything)
-  const qaOut = await callAgent(AGENTS[4], [
+  // 6. QA (reads everything)
+  const qaOut = await callAgent(AGENTS[5], [
     {
       role: "user",
-      content: `${baseContext}\n\n=== PM ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}\n\n=== FRONTEND ===\n${feOut}\n\n=== BACKEND ===\n${beOut}`,
+      content: `${baseContext}\n\n=== PM ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}\n\n=== UI/UX DESIGN ===\n${uiuxOut}\n\n=== FRONTEND ===\n${feOut}\n\n=== BACKEND ===\n${beOut}`,
     },
   ]);
   outputs.push(qaOut);
 
-  // DevOps (reads everything)
-  const devopsOut = await callAgent(AGENTS[5], [
+  // 7. DevOps (reads everything)
+  const devopsOut = await callAgent(AGENTS[6], [
     {
       role: "user",
-      content: `${baseContext}\n\n=== PM ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}\n\n=== FRONTEND ===\n${feOut}\n\n=== BACKEND ===\n${beOut}`,
+      content: `${baseContext}\n\n=== PM ===\n${pmOut}\n\n=== ARCHITECTURE ===\n${archOut}\n\n=== UI/UX DESIGN ===\n${uiuxOut}\n\n=== FRONTEND ===\n${feOut}\n\n=== BACKEND ===\n${beOut}`,
     },
   ]);
   outputs.push(devopsOut);
